@@ -1,0 +1,58 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code settings
+.vscode/
+!.vscode/launch.json  # Optional: track this if shared config
+!.vscode/tasks.json   # Optional: track task config
+
+# Environment and secrets
+.env
+*.env.*
+secrets.json
+service-account.json
+appsettings.Development.json
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs and crash dumps
+*.log
+*.pid
+*.bak
+*.swp
+*.tmp
+*.orig
+
+# NuGet packages
+*.nupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# Rider or JetBrains IDEs
+.idea/
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Docker
+docker-compose.override.yml
+
+*.http
+
+launchSettings.json
