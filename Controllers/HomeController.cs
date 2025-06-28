@@ -8,6 +8,6 @@ public class HomeController : ControllerBase
     public IActionResult Ping()
     {
         var serverTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
-        return Ok($"✅ Server is up and running as of {serverTime}");
+        return Ok($"✅ Server is up and running as of time: {serverTime}");
     }
 }
