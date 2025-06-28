@@ -56,3 +56,6 @@ docker-compose.override.yml
 *.http
 
 launchSettings.json
+
+combined_vocab*
+vocab_*

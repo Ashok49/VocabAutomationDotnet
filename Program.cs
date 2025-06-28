@@ -10,7 +10,7 @@ builder.Configuration
 // Register services and interfaces
 builder.Services.AddScoped<IVocabService, VocabService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IGptService, GptService>();
+builder.Services.AddHttpClient<IGptService, GptService>();
 builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<ITwilioService, TwilioService>();
 builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();

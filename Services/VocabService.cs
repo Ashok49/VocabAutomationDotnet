@@ -52,7 +52,7 @@ namespace VocabAutomation.Services
                 foreach (var (word, meaning) in entries)
                 {
                     cmd.CommandText = $@"
-                        INSERT INTO \""{tableName}\"" (word, meaning)
+                        INSERT INTO ""{tableName}"" (word, meaning)
                         VALUES (@word, @meaning)
                         ON CONFLICT (word) DO UPDATE SET meaning = EXCLUDED.meaning;";
                     cmd.Parameters.Clear();
