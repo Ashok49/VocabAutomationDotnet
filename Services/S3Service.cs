@@ -10,13 +10,15 @@ namespace VocabAutomation.Services
     {
         private readonly ILogger<S3Service> _logger;
         private readonly IAmazonS3 _s3Client;
-        private readonly string _bucketName;
+        private readonly string _audiobucketName;
+
+        private readonly string _pdfBucketName;
 
         public S3Service(IConfiguration config, ILogger<S3Service> logger)
         {
             _logger = logger;
-            _bucketName = config["S3_BUCKET"];
-
+            _audiobucketName = config["S3_AUDIO_BUCKET"];
+            _pdfBucketName = config["S3_PDF_BUCKET"];
             _s3Client = new AmazonS3Client(
                 config["AWS_ACCESS_KEY_ID"],
                 config["AWS_SECRET_ACCESS_KEY"],
@@ -30,8 +32,8 @@ namespace VocabAutomation.Services
             {
                 var fileTransferUtility = new TransferUtility(_s3Client);
 
-                await fileTransferUtility.UploadAsync(filePath, _bucketName, s3FileName);
-                var url = $"https://{_bucketName}.s3.amazonaws.com/{s3FileName}";
+                await fileTransferUtility.UploadAsync(filePath, _audiobucketName, s3FileName);
+                var url = $"https://{_audiobucketName}.s3.amazonaws.com/{s3FileName}";
                 _logger.LogInformation("✅ Uploaded audio to S3: {Url}", url);
                 return url;
             }
@@ -39,6 +41,33 @@ namespace VocabAutomation.Services
             {
                 _logger.LogError(ex, "❌ Failed to upload to S3.");
                 return null;
+            }
+        }
+
+        public async Task<string> UploadPdfAsync(Stream stream, string fileName)
+        {
+            try
+            {
+                var uploadRequest = new TransferUtilityUploadRequest
+                {
+                    InputStream = stream,
+                    Key = fileName,
+                    BucketName = _pdfBucketName,
+                    ContentType = "application/pdf",
+                    CannedACL = S3CannedACL.PublicRead
+                };
+
+                var transferUtility = new TransferUtility(_s3Client);
+                await transferUtility.UploadAsync(uploadRequest);
+
+                var url = $"https://{_pdfBucketName}.s3.amazonaws.com/{fileName}";
+                _logger.LogInformation("✅ PDF uploaded to S3: {Url}", url);
+                return url;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to upload PDF to S3");
+                throw;
             }
         }
     }

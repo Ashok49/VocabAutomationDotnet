@@ -8,13 +8,13 @@ namespace VocabAutomation.Services
     public class VocabSyncService : IVocabSyncService
     {
         private readonly IGoogleDriveService _driveService;
-        private readonly IDocxParserService _parserService;
+        private readonly IDocumentService _parserService;
         private readonly IVocabService _storageService;
         private readonly ILogger<VocabSyncService> _logger;
 
         public VocabSyncService(
             IGoogleDriveService driveService,
-            IDocxParserService parserService,
+            IDocumentService parserService,
             IVocabService storageService,
             ILogger<VocabSyncService> logger)
         {

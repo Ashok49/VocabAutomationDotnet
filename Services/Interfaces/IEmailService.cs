@@ -11,5 +11,10 @@ namespace VocabAutomation.Services.Interfaces
             string generalStory,
             string softwareStory,
             string subject);
+
+        Task SendVocabEmailAsync(List<WordMeaning> vocabList, string pdfUrl, string subject);
+
     }
+
+    
 }

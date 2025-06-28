@@ -62,6 +62,57 @@ namespace VocabAutomation.Services
             }
         }
 
+        public async Task SendVocabEmailAsync(List<WordMeaning> vocabList, string pdfUrl, string subject)
+        {
+            try
+            {
+                
+                var htmlBody = BuildHtmlBody(vocabList);
+
+                using var message = new MailMessage
+                {
+                    From = new MailAddress(_gmailSender),
+                    Subject = subject,
+                    Body = htmlBody,
+                    IsBodyHtml = true
+                };
+
+                message.To.Add(_recipient);
+
+                // Download PDF from S3 and attach
+                using var httpClient = new HttpClient();
+                var pdfBytes = await httpClient.GetByteArrayAsync(pdfUrl);
+                var pdfStream = new MemoryStream(pdfBytes);
+                var attachment = new Attachment(pdfStream, "vocab.pdf", "application/pdf");
+                message.Attachments.Add(attachment);
+
+                using var smtp = new SmtpClient("smtp.gmail.com", 587)
+                {
+                    Credentials = new NetworkCredential(_gmailSender, _gmailPassword),
+                    EnableSsl = true
+                };
+
+                await smtp.SendMailAsync(message);
+                _logger.LogInformation("📧 Reuse email sent to {Recipient} with PDF from {PdfUrl}", _recipient, pdfUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to send vocab reuse email.");
+            }
+        }
+
+
+        private string BuildHtmlBody(List<WordMeaning> vocabList)
+        {
+            var sb = new StringBuilder();
+            sb.Append("<h2>🧠 Today's Vocabulary</h2><ul>");
+            foreach (var item in vocabList)
+            {
+                sb.Append($"<li><b>{item.Word}</b>: {item.Meaning}</li>");
+            }
+            sb.Append("</ul>");
+            return sb.ToString();
+        }
 
         private string BuildHtmlBody(List<VocabEntry> vocabList)
         {

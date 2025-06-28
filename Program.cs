@@ -14,7 +14,7 @@ builder.Services.AddHttpClient<IGptService, GptService>();
 builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<ITwilioService, TwilioService>();
 builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
-builder.Services.AddScoped<IDocxParserService, DocxParserService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IVocabSyncService, VocabSyncService>();
 builder.Services.AddScoped<ISendBatchService, SendBatchService>();
 
