@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using VocabAutomation.Models;
 using VocabAutomation.Services.Interfaces;
 
 namespace VocabAutomation.Services
@@ -36,6 +37,13 @@ namespace VocabAutomation.Services
             try
             {
                 var (vocabList, fromToday) = await _vocabService.GetVocabBatchAsync(tableName);
+
+                if (vocabList.Count == 0)
+                {
+                    _logger.LogInformation("📭 No words to send for {Table}", tableName);
+                    return $"📭 No words to send for {tableName}.";
+
+                }
                 if (fromToday)
                 {
                     _logger.LogInformation("✅ Words from '{Table}' already sent today.", tableName);
@@ -55,8 +63,12 @@ namespace VocabAutomation.Services
                 await _emailService.SendVocabEmailAsync(vocabList, generalStory, softwareStory, subject);
 
                 var combinedText = BuildCombinedText(vocabList, generalStory, softwareStory);
-                var mp3Path = await _gptService.GenerateSpeechAsync(combinedText);
-                var audioUrl = await _s3Service.UploadFileAsync(mp3Path);
+
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var fileName = $"combined_vocab_audio_{timestamp}.mp3";
+
+                var mp3Path = await _gptService.GenerateSpeechAsync(combinedText, fileName); 
+                var audioUrl = await _s3Service.UploadAudioAsync(mp3Path,fileName);
 
                 await _twilioService.MakeCallAsync(audioUrl);
                 return "✅ Batch processed and sent successfully.";
@@ -68,7 +80,7 @@ namespace VocabAutomation.Services
             }
         }
 
-        private string BuildCombinedText(List<(string Word, string Meaning)> vocabList, string generalStory, string softwareStory)
+        private string BuildCombinedText(List<VocabEntry> vocabList, string generalStory, string softwareStory)
         {
             var intro = "Here are today's vocabulary words and meanings:\n";
             var wordsText = string.Join("\n", vocabList.ConvertAll(v => $"{v.Word}: {v.Meaning}"));

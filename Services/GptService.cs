@@ -9,6 +9,7 @@ using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using VocabAutomation.Services.Interfaces;
+using VocabAutomation.Models;
 
 namespace VocabAutomation.Services
 {
@@ -25,7 +26,7 @@ namespace VocabAutomation.Services
             _logger = logger;
         }
 
-        public async Task<string> GenerateStoryAsync(List<(string Word, string Meaning)> vocab, string context = "general")
+        public async Task<string> GenerateStoryAsync(List<VocabEntry> vocab, string context = "general")
         {
             try
             {
@@ -92,40 +93,43 @@ namespace VocabAutomation.Services
             }
         }
 
-
-        public async Task<byte[]> GenerateSpeechAsync(string text)
+        public async Task<string> GenerateSpeechAsync(string text, string fileName = "story.mp3")
+        {
+            try
             {
-                try
+                var payload = new
                 {
-                    var payload = new
-                    {
-                        model = "tts-1",
-                        input = text,
-                        voice = "nova"
-                    };
+                    model = "tts-1",      // You can change to "tts-1-hd" if needed
+                    input = text,
+                    voice = "nova"        // Other options: alloy, echo, fable, shimmer
+                };
 
                 var openAiKey = _config["OPENAI_API_KEY"];
                 if (string.IsNullOrWhiteSpace(openAiKey))
                     throw new Exception("OpenAI API key is missing in environment variables.");
 
-                    var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/speech");
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", openAiKey);
-                    request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-                    var response = await _httpClient.SendAsync(request);
-                    response.EnsureSuccessStatusCode();
-
-                    var audioBytes = await response.Content.ReadAsByteArrayAsync();
-                    _logger.LogInformation("🗣️ Speech audio generated.");
-                    return audioBytes;
-                }
-                catch (Exception ex)
+                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/speech")
                 {
-                    _logger.LogError(ex, "❌ Error generating speech audio.");
-                    return Array.Empty<byte>();
-                }
-            }
+                    Headers = { Authorization = new AuthenticationHeaderValue("Bearer", openAiKey) },
+                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                };
 
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var audioBytes = await response.Content.ReadAsByteArrayAsync();
+
+                await File.WriteAllBytesAsync(fileName, audioBytes);
+                _logger.LogInformation("🔉 Audio saved to {FileName}", fileName);
+
+                return fileName;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error generating and saving speech audio.");
+                return string.Empty;
+            }
+        }
 
         
     }

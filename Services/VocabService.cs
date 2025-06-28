@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using VocabAutomation.Services.Interfaces;
+using VocabAutomation.Models;
 
 namespace VocabAutomation.Services
 {
@@ -68,82 +69,88 @@ namespace VocabAutomation.Services
             }
         }
 
-public async Task<List<(int Id, string Word, string Meaning)>> GetVocabBatchAsync(string tableName)
-{
-    var result = new List<(int Id, string Word, string Meaning)>();
-
-    try
-    {
-        using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
-
-        using var cmd = conn.CreateCommand();
-
-        // Step 1: Fetch words sent today
-        cmd.CommandText = $@"
-            SELECT id, word, meaning FROM ""{tableName}""
-            WHERE sent_date::date = CURRENT_DATE
-            ORDER BY id
-            LIMIT 10;";
-
-        using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        public async Task<(List<VocabEntry> Words, bool FromToday)> GetVocabBatchAsync(string tableName)
         {
-            result.Add((reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
+            var words = new List<VocabEntry>();
+            bool fromToday = false;
+            var idsToMark = new List<int>();
+            tableName = SanitizeTableName(tableName);
+
+            try
+            {
+                await using var conn = new NpgsqlConnection(_connectionString);
+                await conn.OpenAsync();
+                await using var cmd = conn.CreateCommand();
+
+                // Step 1: Fetch words sent today
+                cmd.CommandText = $@"
+                    SELECT id, word, meaning FROM ""{tableName}""
+                    WHERE sent_date::date = CURRENT_DATE
+                    ORDER BY id
+                    LIMIT 10;";
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    words.Add(new VocabEntry(reader.GetString(1), reader.GetString(2)));
+                }
+
+                await reader.CloseAsync();
+
+                if (words.Count > 0)
+                {
+                    fromToday = true;
+                    _logger.LogInformation("✅ {Count} words already sent today from table {Table}.", words.Count, tableName);
+                    return (words, fromToday);
+                }
+
+                // Step 2: Fetch unsent words
+                cmd.CommandText = $@"
+                    SELECT id, word, meaning FROM ""{tableName}""
+                    WHERE sent_date IS NULL
+                    ORDER BY id
+                    LIMIT 10;";
+
+                await using var reader2 = await cmd.ExecuteReaderAsync();
+                while (await reader2.ReadAsync())
+                {
+                    int id = reader2.GetInt32(0);
+                    string word = reader2.GetString(1);
+                    string meaning = reader2.GetString(2);
+                    words.Add(new VocabEntry(word, meaning));
+                    idsToMark.Add(id);
+                }
+
+                await reader2.CloseAsync();
+
+                if (idsToMark.Count > 0)
+                {
+                    cmd.CommandText = $@"
+                        UPDATE ""{tableName}""
+                        SET sent_date = CURRENT_TIMESTAMP
+                        WHERE id = ANY(@ids);";
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.AddWithValue("ids", idsToMark);
+                    await cmd.ExecuteNonQueryAsync();
+
+                    _logger.LogInformation("✅ Marked {Count} new words as sent in {Table}.", idsToMark.Count, tableName);
+                }
+                else
+                {
+                    _logger.LogInformation("📭 No words available to send from {Table}.", tableName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error while fetching vocab from {Table}.", tableName);
+            }
+
+            return (words, fromToday);
         }
 
-        reader.Close();
 
-        if (result.Count > 0)
-        {
-            _logger.LogInformation($"✅ {result.Count} words already sent today from table {tableName}.");
-            return result;
-        }
-
-        // Step 2: Fetch unsent words
-        cmd.CommandText = $@"
-            SELECT id, word, meaning FROM ""{tableName}""
-            WHERE sent_date IS NULL
-            ORDER BY id
-            LIMIT 10;";
         
-        var ids = new List<int>();
-        using var reader2 = await cmd.ExecuteReaderAsync();
-        while (await reader2.ReadAsync())
-        {
-            int id = reader2.GetInt32(0);
-            ids.Add(id);
-            result.Add((id, reader2.GetString(1), reader2.GetString(2)));
-        }
-        reader2.Close();
-
-        if (ids.Count > 0)
-        {
-            cmd.CommandText = $@"
-                UPDATE ""{tableName}""
-                SET sent_date = CURRENT_TIMESTAMP
-                WHERE id = ANY(@ids);";
-            cmd.Parameters.Clear();
-            cmd.Parameters.AddWithValue("ids", ids);
-            await cmd.ExecuteNonQueryAsync();
-
-            _logger.LogInformation($"✅ Marked {ids.Count} new words as sent from table {tableName}.");
-        }
-        else
-        {
-            _logger.LogInformation($"📭 No new or already-sent words found in table {tableName}.");
-        }
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, $"❌ Error while fetching batch from {tableName}.");
-    }
-
-    return result;
-}
-
-
-        public async Task MarkWordsAsSentAsync(List<int> ids,string tableName)
+        public async Task MarkWordsAsSentAsync(List<int> ids, string tableName)
         {
             if (ids.Count == 0) return;
             tableName = SanitizeTableName(tableName);

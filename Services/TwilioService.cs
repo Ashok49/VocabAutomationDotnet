@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using VocabAutomation.Services.Interfaces;
-using Twilio.Twiml;
+using Twilio.Types;
 
 namespace VocabAutomation.Services
 {
