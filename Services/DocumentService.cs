@@ -74,9 +74,14 @@ namespace VocabAutomation.Services
             var fontCollection = new FontCollection();
             FontFamily fontFamily;
 
-            if (!fontCollection.TryGet("Arial", out fontFamily))
+            var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
+            if (File.Exists(fontPath))
             {
-                fontFamily = fontCollection.Add("LiberationSans-Regular.ttf");
+                fontFamily = fontCollection.Add(fontPath);
+            }
+            else if (!fontCollection.TryGet("Arial", out fontFamily))
+            {
+                fontFamily = SystemFonts.Families.First(); // Fallback system font
             }
 
             var font = new XFont(fontFamily.Name, 14, XFontStyle.Regular);

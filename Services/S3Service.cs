@@ -54,7 +54,6 @@ namespace VocabAutomation.Services
                     Key = fileName,
                     BucketName = _pdfBucketName,
                     ContentType = "application/pdf",
-                    CannedACL = S3CannedACL.PublicRead
                 };
 
                 var transferUtility = new TransferUtility(_s3Client);
