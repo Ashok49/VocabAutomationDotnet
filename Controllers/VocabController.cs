@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using VocabAutomation.Services.Interfaces;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Threading.Tasks;
+using VocabAutomation.Services.Interfaces;
 
 namespace VocabAutomation.Controllers
 {
@@ -9,18 +10,18 @@ namespace VocabAutomation.Controllers
     [Route("api/[controller]")]
     public class VocabController : ControllerBase
     {
-        private readonly IGoogleDriveService _driveService;
-        private readonly IDocxParserService _parserService;
-        private readonly IVocabStorageService _storageService;
+        private readonly IVocabSyncService _syncService;
+        private readonly ISendBatchService _sendBatchService;
+        private readonly ILogger<VocabController> _logger;
 
         public VocabController(
-            IGoogleDriveService driveService,
-            IDocxParserService parserService,
-            IVocabStorageService storageService)
+            IVocabSyncService syncService,
+            ISendBatchService sendBatchService,
+            ILogger<VocabController> logger)
         {
-            _driveService = driveService;
-            _parserService = parserService;
-            _storageService = storageService;
+            _syncService = syncService;
+            _sendBatchService = sendBatchService;
+            _logger = logger;
         }
 
         [HttpPost("sync")]
@@ -28,46 +29,30 @@ namespace VocabAutomation.Controllers
         {
             try
             {
-                var files = await _driveService.GetDocFilesAsync();
-
-                if (files.Count == 0)
-                {
-                    return Ok("No Google Docs found in the folder.");
-                }
-
-                foreach (var (fileId, fileName) in files)
-                {
-                    try
-                    {
-                        var docxBytes = await _driveService.DownloadDocxAsync(fileId);
-                        if (docxBytes.Length == 0)
-                        {
-                            Console.WriteLine($"⚠️ Skipped file: {fileName} — empty or unreadable.");
-                            continue;
-                        }
-
-                        var entries = _parserService.ExtractWordMeanings(docxBytes);
-
-                        if (entries.Count == 0)
-                        {
-                            Console.WriteLine($"⚠️ No vocab found in file: {fileName}");
-                            continue;
-                        }
-
-                        await _storageService.StoreVocabularyAsync(entries, fileName);
-                    }
-                    catch (Exception innerEx)
-                    {
-                        Console.WriteLine($"❌ Error processing file '{fileName}': {innerEx.Message}");
-                    }
-                }
-
-                return Ok("✅ Vocab sync completed successfully.");
+                _logger.LogInformation("📥 Sync request received.");
+                var result = await _syncService.SyncFromGoogleDriveAsync();
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Fatal error during vocab sync: {ex.Message}");
-                return StatusCode(500, "An error occurred during vocab sync.");
+                _logger.LogError(ex, "❌ Sync failed.");
+                return StatusCode(500, "Error during Google Drive sync.");
+            }
+        }
+
+        [HttpPost("send-batch/{tableName}")]
+        public async Task<IActionResult> SendVocabBatch(string tableName)
+        {
+            try
+            {
+                _logger.LogInformation("📤 Sending vocab batch for table: {Table}", tableName);
+                var result = await _sendBatchService.ProcessBatchAsync(tableName);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to send vocab batch.");
+                return StatusCode(500, "Error while sending vocab batch.");
             }
         }
     }

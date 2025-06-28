@@ -7,9 +7,18 @@ builder.Configuration
     .AddJsonFile("appSettings.json", optional: true)
     .AddEnvironmentVariables();
 
+// Register services and interfaces
+builder.Services.AddScoped<IVocabService, VocabService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IGptService, GptService>();
+builder.Services.AddScoped<IS3Service, S3Service>();
+builder.Services.AddScoped<ITwilioService, TwilioService>();
 builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
-builder.Services.AddScoped<IVocabStorageService, VocabStorageService>();
 builder.Services.AddScoped<IDocxParserService, DocxParserService>();
+builder.Services.AddScoped<IVocabSyncService, VocabSyncService>();
+builder.Services.AddScoped<ISendBatchService, SendBatchService>();
+
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers();
