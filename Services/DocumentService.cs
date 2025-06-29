@@ -93,7 +93,7 @@ namespace VocabAutomation.Services
 
             var fontFamily = fontCollection.Add(fontPath);
 
-            var font = new XFont(fontFamily.Name, 14, XFontStyle.Regular);
+            var font = new XFont("NotoSans", 14, XFontStyle.Regular);
             double yPoint = 40;
 
             // Title

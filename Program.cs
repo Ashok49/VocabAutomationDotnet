@@ -1,7 +1,11 @@
 using VocabAutomation.Services;
 using VocabAutomation.Services.Interfaces;
+using PdfSharpCore.Fonts;
+using VocabAutomation.Fonts;
 
 var builder = WebApplication.CreateBuilder(args);
+
+GlobalFontSettings.FontResolver = new CustomFontResolver();
 
 builder.Configuration
     .AddJsonFile("appSettings.json", optional: true)
