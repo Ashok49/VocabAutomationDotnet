@@ -15,6 +15,14 @@ namespace VocabAutomation.Services
 {
     public class DocumentService : IDocumentService
     {
+
+        private readonly ILogger<DocumentService> _logger;
+
+        public DocumentService(ILogger<DocumentService> logger)
+        {
+            _logger = logger;
+        }
+
         public List<(string Word, string Meaning)> ExtractWordMeanings(byte[] docxContent)
         {
             var wordMeanings = new List<(string Word, string Meaning)>();
@@ -72,11 +80,9 @@ namespace VocabAutomation.Services
             var gfx = XGraphics.FromPdfPage(page);
 
             var fontCollection = new FontCollection();
-            FontFamily fontFamily;
 
             //var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
             
-            var fontPath = Environment.GetEnvironmentVariable("LIBERATION_TTF_PATH") ?? "";
             string fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "NotoSants-Regular.ttf");
 
 
