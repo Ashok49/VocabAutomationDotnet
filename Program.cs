@@ -21,7 +21,7 @@ builder.Services.AddScoped<IGoogleDriveService, GoogleDriveService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IVocabSyncService, VocabSyncService>();
 builder.Services.AddScoped<ISendBatchService, SendBatchService>();
-
+builder.Services.AddHttpClient();
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
