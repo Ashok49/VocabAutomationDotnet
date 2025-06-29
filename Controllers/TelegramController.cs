@@ -22,58 +22,40 @@ namespace VocabAutomation.Controllers
             _logger = logger;
         }
 
-        [HttpPost("webhook")]
-        public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
-        {
-            var chatId = update?.Message?.Chat?.Id;
-            var messageText = update?.Message?.Text;
+[HttpPost("webhook")]
+public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
+{
+    var chatId = update?.Message?.Chat?.Id;
+    var messageText = update?.Message?.Text?.Trim();
 
-            if (chatId == null || string.IsNullOrEmpty(messageText))
-                return Ok();
+    if (chatId == null || string.IsNullOrEmpty(messageText))
+        return Ok();
 
-            string responseText;
+    string responseText;
 
-            switch (messageText.ToLower())
-            {
-                case "/sync":
-                    await TriggerInternalApi("api/Vocab/sync");
-                    responseText = "✅ Sync triggered.";
-                    break;
-                case "/batch":
-                    await TriggerInternalApi("api/Vocab/send-batch/software_vocabulary", HttpMethod.Post);
-                    responseText = "✅ Batch sent.";
-                    break;
-                default:
-                    responseText = "🤖 Welcome! Use `/sync` or `/batch`.";
-                    break;
-            }
-
-            await SendTelegramMessage(chatId.Value, responseText);
-            return Ok();
-        }
-
-        private async Task TriggerInternalApi(string path, HttpMethod method = null)
-        {
-            var client = _httpClientFactory.CreateClient();
-            var request = new HttpRequestMessage(method ?? HttpMethod.Get, $"https://vocabautomationdotnet.onrender.com/{path}");
-            await client.SendAsync(request);
-        }
-
-        private async Task SendTelegramMessage(long chatId, string text)
-        {
-            var token = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
-            var client = _httpClientFactory.CreateClient();
-
-            var body = new
-            {
-                chat_id = chatId,
-                text = text
-            };
-
-            var json = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
-            await client.PostAsync(string.Format(TELEGRAM_API, token), json);
-        }
+    if (messageText.Equals("/sync", StringComparison.OrdinalIgnoreCase))
+    {
+        await TriggerInternalApi("api/Vocab/sync");
+        responseText = "✅ Sync triggered.";
     }
+    else if (messageText.StartsWith("/batch", StringComparison.OrdinalIgnoreCase))
+    {
+        var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var tableName = parts.Length >= 2 ? parts[1] : "general_vocabulary";
+
+        await TriggerInternalApi($"api/Vocab/send-batch/{tableName}", HttpMethod.Post);
+        responseText = $"✅ Batch sent for `{tableName}`.";
+    }
+    else
+    {
+        responseText = "🤖 Welcome! Use:\n\n/sync\n/batch [table_name]";
+    }
+
+    await SendTelegramMessage(chatId.Value, responseText);
+    return Ok();
+}
+
+
 
     // DTOs
     public class TelegramUpdate
