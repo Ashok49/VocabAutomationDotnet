@@ -77,15 +77,15 @@ namespace VocabAutomation.Services
             //var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
             
             var fontPath = Environment.GetEnvironmentVariable("LIBERATION_TTF_PATH") ?? "";
+            string fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "NotoSants-Regular.ttf");
 
-                if (!string.IsNullOrWhiteSpace(fontPath) && File.Exists(fontPath))
-                {
-                    fontFamily = fontCollection.Add(fontPath);
-                }
-                else
-                {
-                    throw new FileNotFoundException("❌ LiberationSans-Regular.ttf not found. Please check LIBERATION_TTF_PATH environment variable.");
-                }
+
+            if (!File.Exists(fontPath))
+            {
+                _logger.LogError("Font not found at: {0}", fontPath);
+            }
+
+            var fontFamily = fontCollection.Add(fontPath);
 
             var font = new XFont(fontFamily.Name, 14, XFontStyle.Regular);
             double yPoint = 40;
