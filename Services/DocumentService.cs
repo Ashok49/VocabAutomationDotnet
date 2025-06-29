@@ -83,7 +83,7 @@ namespace VocabAutomation.Services
 
             //var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
             
-            string fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "NotoSants-Regular.ttf");
+            string fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "NotoSans-Regular.ttf");
 
 
             if (!File.Exists(fontPath))
