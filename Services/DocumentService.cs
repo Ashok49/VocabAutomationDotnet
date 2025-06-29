@@ -74,15 +74,18 @@ namespace VocabAutomation.Services
             var fontCollection = new FontCollection();
             FontFamily fontFamily;
 
-            var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
-            if (File.Exists(fontPath))
-            {
-                fontFamily = fontCollection.Add(fontPath);
-            }
-            else if (!fontCollection.TryGet("Arial", out fontFamily))
-            {
-                fontFamily = SystemFonts.Families.First(); // Fallback system font
-            }
+            //var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
+            
+            var fontPath = Environment.GetEnvironmentVariable("LIBERATION_TTF_PATH") ?? "";
+
+                if (!string.IsNullOrWhiteSpace(fontPath) && File.Exists(fontPath))
+                {
+                    fontFamily = fontCollection.Add(fontPath);
+                }
+                else
+                {
+                    throw new FileNotFoundException("❌ LiberationSans-Regular.ttf not found. Please check LIBERATION_TTF_PATH environment variable.");
+                }
 
             var font = new XFont(fontFamily.Name, 14, XFontStyle.Regular);
             double yPoint = 40;
