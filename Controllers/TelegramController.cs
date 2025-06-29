@@ -74,3 +74,4 @@ public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
         public long Id { get; set; }
     }
 }
+}
