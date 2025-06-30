@@ -18,8 +18,8 @@ namespace VocabAutomation.Controllers
 
         public TelegramController(IHttpClientFactory httpClientFactory, ILogger<TelegramController> logger)
         {
-            _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _httpClientFactory = httpClientFactory; 
         }
 
         [HttpPost("webhook")]
@@ -60,7 +60,8 @@ namespace VocabAutomation.Controllers
             method ??= HttpMethod.Get;
 
             var client = _httpClientFactory.CreateClient();
-            var request = new HttpRequestMessage(method, endpoint);
+            var baseUrl = "https://vocabautomationdotnet.onrender.com/"; // ✅ use your actual API base URL
+            var request = new HttpRequestMessage(method, new Uri(new Uri(baseUrl), endpoint));
             await client.SendAsync(request);
         }
 
