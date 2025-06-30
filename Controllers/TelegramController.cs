@@ -35,7 +35,7 @@ namespace VocabAutomation.Controllers
 
             if (messageText.Equals("/sync", StringComparison.OrdinalIgnoreCase))
             {
-                await TriggerInternalApi("api/Vocab/sync");
+                await TriggerInternalApi("api/Vocab/sync",HttpMethod.Post);
                 responseText = "✅ Sync triggered.";
             }
             else if (messageText.StartsWith("/batch", StringComparison.OrdinalIgnoreCase))
