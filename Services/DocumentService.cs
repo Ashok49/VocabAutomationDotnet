@@ -76,15 +76,10 @@ namespace VocabAutomation.Services
             string softwareStory)
         {
             var document = new PdfDocument();
-            var page = document.AddPage();
-            var gfx = XGraphics.FromPdfPage(page);
+            var pages = new List<(PdfPage Page, XGraphics Gfx)>();
 
             var fontCollection = new FontCollection();
-
-            //var fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "LiberationSans-Regular.ttf");
-            
             string fontPath = Path.Combine(AppContext.BaseDirectory, "Fonts", "NotoSans-Regular.ttf");
-
 
             if (!File.Exists(fontPath))
             {
@@ -93,64 +88,105 @@ namespace VocabAutomation.Services
 
             var fontFamily = fontCollection.Add(fontPath);
 
-            var font = new XFont("NotoSans", 14, XFontStyle.Regular);
+            var font = new XFont("NotoSans", 12, XFontStyle.Regular);
+            var headerFont = new XFont("NotoSans", 14, XFontStyle.Bold);
+
+            double margin = 50;
             double yPoint = 40;
 
-            // Title
-            gfx.DrawString("🧠 Daily Vocabulary Batch", font, XBrushes.Black, new XRect(0, yPoint, page.Width, 20), XStringFormats.TopCenter);
-            yPoint += 40;
+            void AddNewPage()
+            {
+                var page = document.AddPage();
+                var gfx = XGraphics.FromPdfPage(page);
+                pages.Add((page, gfx));
+                yPoint = 40;
+            }
 
-            // Vocabulary list
-            gfx.DrawString("📘 Vocabulary Words:", font, XBrushes.DarkBlue, new XRect(40, yPoint, page.Width - 80, 20), XStringFormats.TopLeft);
+            AddNewPage(); // start with the first page
+            var current = pages.Last();
+
+            // Title
+            current.Gfx.DrawString("🧠 Daily Vocabulary Batch", headerFont, XBrushes.Black, new XRect(0, yPoint, current.Page.Width, 20), XStringFormats.TopCenter);
             yPoint += 30;
+
+            // Date
+            var today = DateTime.Now.ToString("MMMM dd, yyyy");
+            current.Gfx.DrawString($"📅 Date: {today}", font, XBrushes.Black, new XRect(margin, yPoint, current.Page.Width - 2 * margin, 20), XStringFormats.TopLeft);
+            yPoint += 30;
+
+            // Vocabulary Section
+            current.Gfx.DrawString("📘 Vocabulary Words:", headerFont, XBrushes.DarkBlue, new XRect(margin, yPoint, current.Page.Width - 2 * margin, 20), XStringFormats.TopLeft);
+            yPoint += 25;
 
             foreach (var vocab in vocabList)
             {
-                gfx.DrawString($"{vocab.Word} — {vocab.Meaning}", font, XBrushes.Black, new XRect(50, yPoint, page.Width - 100, 20), XStringFormats.TopLeft);
-                yPoint += 25;
-                if (yPoint > page.Height - 100)
+                var combinedLine = $"{vocab.Word} — {vocab.Meaning}";
+                var wrappedLines = BreakTextIntoLines(current.Gfx, combinedLine, font, current.Page.Width - 2 * margin);
+
+                foreach (var line in wrappedLines)
                 {
-                    page = document.AddPage();
-                    gfx = XGraphics.FromPdfPage(page);
-                    yPoint = 40;
+                    current.Gfx.DrawString(line, font, XBrushes.Black, new XRect(margin, yPoint, current.Page.Width - 2 * margin, 20), XStringFormats.TopLeft);
+                    yPoint += 18;
+
+                    if (yPoint > current.Page.Height - 70)
+                    {
+                        AddNewPage();
+                        current = pages.Last();
+                    }
                 }
+
+                yPoint += 5;
             }
 
-            // General Story
+            // Divider line
+            yPoint += 10;
+            current.Gfx.DrawLine(XPens.DarkGray, margin, yPoint, current.Page.Width - margin, yPoint);
             yPoint += 20;
-            gfx.DrawString("📖 General Story:", font, XBrushes.DarkBlue, new XRect(40, yPoint, page.Width - 80, 20), XStringFormats.TopLeft);
-            yPoint += 30;
-            yPoint = DrawWrappedText(gfx, generalStory, font, page, yPoint);
+
+            // General Story
+            current.Gfx.DrawString("📖 General Story:", headerFont, XBrushes.DarkBlue, new XRect(margin, yPoint, current.Page.Width - 2 * margin, 20), XStringFormats.TopLeft);
+            yPoint += 25;
+            yPoint = DrawWrappedText(current, generalStory, font, yPoint, AddNewPage, () => current = pages.Last());
 
             // Software Story
-            yPoint += 20;
-            gfx.DrawString("💻 Software Story:", font, XBrushes.DarkBlue, new XRect(40, yPoint, page.Width - 80, 20), XStringFormats.TopLeft);
-            yPoint += 30;
-            DrawWrappedText(gfx, softwareStory, font, page, yPoint);
+            yPoint += 15;
+            current.Gfx.DrawString("💻 Software Story:", headerFont, XBrushes.DarkBlue, new XRect(margin, yPoint, current.Page.Width - 2 * margin, 20), XStringFormats.TopLeft);
+            yPoint += 25;
+            DrawWrappedText(current, softwareStory, font, yPoint, AddNewPage, () => current = pages.Last());
 
-            // Save to memory stream
+            // Footer: Page numbers
+            for (int i = 0; i < pages.Count; i++)
+            {
+                var (page, gfx) = pages[i];
+                gfx.DrawString($"Page {i + 1} of {pages.Count}", font, XBrushes.Gray, new XRect(0, page.Height - 30, page.Width, 20), XStringFormats.Center);
+            }
+
+            // Save to stream
             var stream = new MemoryStream();
             document.Save(stream, false);
             stream.Position = 0;
             return stream;
         }
 
-        private double DrawWrappedText(XGraphics gfx, string text, XFont font, PdfPage page, double startY)
+
+        private double DrawWrappedText((PdfPage Page, XGraphics Gfx) current, string text, XFont font, double startY,
+                                    Action addNewPage, Action updateCurrent)
         {
-            double lineHeight = 20;
-            double maxWidth = page.Width - 100;
-            var lines = BreakTextIntoLines(gfx, text, font, maxWidth);
+            double lineHeight = 18;
+            double margin = 50;
+            double maxWidth = current.Page.Width - 2 * margin;
+            var lines = BreakTextIntoLines(current.Gfx, text, font, maxWidth);
 
             double y = startY;
             foreach (var line in lines)
             {
-                gfx.DrawString(line, font, XBrushes.Black, new XRect(50, y, maxWidth, lineHeight), XStringFormats.TopLeft);
+                current.Gfx.DrawString(line, font, XBrushes.Black, new XRect(margin, y, maxWidth, lineHeight), XStringFormats.TopLeft);
                 y += lineHeight;
 
-                if (y > page.Height - 100)
+                if (y > current.Page.Height - 70)
                 {
-                    page = page.Owner.AddPage();
-                    gfx = XGraphics.FromPdfPage(page);
+                    addNewPage();
+                    updateCurrent();
                     y = 40;
                 }
             }
@@ -161,23 +197,34 @@ namespace VocabAutomation.Services
         private List<string> BreakTextIntoLines(XGraphics gfx, string text, XFont font, double maxWidth)
         {
             var result = new List<string>();
-            var words = text.Split(' ');
+            if (string.IsNullOrWhiteSpace(text)) return result;
+
+            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var sb = new StringBuilder();
 
             foreach (var word in words)
             {
-                var testLine = sb.Length == 0 ? word : $"{sb} {word}";
+                string testLine = sb.Length == 0 ? word : $"{sb} {word}";
                 var size = gfx.MeasureString(testLine, font);
 
                 if (size.Width > maxWidth)
                 {
+                    // If even a single word is too long, split mid-word
+                    if (sb.Length == 0 && word.Length > 10)
+                    {
+                        result.Add(word); // Add long word as a line
+                        continue;
+                    }
+
                     result.Add(sb.ToString());
                     sb.Clear();
                     sb.Append(word);
                 }
                 else
                 {
-                    sb.Append(sb.Length == 0 ? word : $" {word}");
+                    if (sb.Length > 0)
+                        sb.Append(' ');
+                    sb.Append(word);
                 }
             }
 
@@ -186,6 +233,7 @@ namespace VocabAutomation.Services
 
             return result;
         }
+
     }
 }
 
