@@ -22,6 +22,8 @@ namespace VocabAutomation.Controllers
             _logger = logger;
         }
 
+    }
+
 [HttpPost("webhook")]
 public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
 {
@@ -73,5 +75,4 @@ public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
     {
         public long Id { get; set; }
     }
-}
 }
