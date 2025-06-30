@@ -22,57 +22,78 @@ namespace VocabAutomation.Controllers
             _logger = logger;
         }
 
-    }
+        [HttpPost("webhook")]
+        public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
+        {
+            var chatId = update?.Message?.Chat?.Id;
+            var messageText = update?.Message?.Text?.Trim();
 
-[HttpPost("webhook")]
-public async Task<IActionResult> Webhook([FromBody] TelegramUpdate update)
-{
-    var chatId = update?.Message?.Chat?.Id;
-    var messageText = update?.Message?.Text?.Trim();
+            if (chatId == null || string.IsNullOrEmpty(messageText))
+                return Ok();
 
-    if (chatId == null || string.IsNullOrEmpty(messageText))
-        return Ok();
+            string responseText;
 
-    string responseText;
+            if (messageText.Equals("/sync", StringComparison.OrdinalIgnoreCase))
+            {
+                await TriggerInternalApi("api/Vocab/sync");
+                responseText = "✅ Sync triggered.";
+            }
+            else if (messageText.StartsWith("/batch", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var tableName = parts.Length >= 2 ? parts[1] : "general_vocabulary";
 
-    if (messageText.Equals("/sync", StringComparison.OrdinalIgnoreCase))
-    {
-        await TriggerInternalApi("api/Vocab/sync");
-        responseText = "✅ Sync triggered.";
-    }
-    else if (messageText.StartsWith("/batch", StringComparison.OrdinalIgnoreCase))
-    {
-        var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var tableName = parts.Length >= 2 ? parts[1] : "general_vocabulary";
+                await TriggerInternalApi($"api/Vocab/send-batch/{tableName}", HttpMethod.Post);
+                responseText = $"✅ Batch sent for `{tableName}`.";
+            }
+            else
+            {
+                responseText = "🤖 Welcome! Use:\n\n/sync\n/batch [table_name]";
+            }
 
-        await TriggerInternalApi($"api/Vocab/send-batch/{tableName}", HttpMethod.Post);
-        responseText = $"✅ Batch sent for `{tableName}`.";
-    }
-    else
-    {
-        responseText = "🤖 Welcome! Use:\n\n/sync\n/batch [table_name]";
-    }
+            await SendTelegramMessage(chatId.Value, responseText);
+            return Ok();
+        }
 
-    await SendTelegramMessage(chatId.Value, responseText);
-    return Ok();
-}
+        private async Task TriggerInternalApi(string endpoint, HttpMethod method = null)
+        {
+            method ??= HttpMethod.Get;
 
+            var client = _httpClientFactory.CreateClient();
+            var request = new HttpRequestMessage(method, endpoint);
+            await client.SendAsync(request);
+        }
 
+        private async Task SendTelegramMessage(long chatId, string text)
+        {
+            var client = _httpClientFactory.CreateClient();
+            var payload = new
+            {
+                chat_id = chatId,
+                text = text,
+                parse_mode = "Markdown"
+            };
 
-    // DTOs
-    public class TelegramUpdate
-    {
-        public TelegramMessage Message { get; set; }
-    }
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var url = string.Format(TELEGRAM_API, Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN"));
+            await client.PostAsync(url, content);
+        }
 
-    public class TelegramMessage
-    {
-        public TelegramChat Chat { get; set; }
-        public string Text { get; set; }
-    }
+        // DTOs
+        public class TelegramUpdate
+        {
+            public TelegramMessage Message { get; set; }
+        }
 
-    public class TelegramChat
-    {
-        public long Id { get; set; }
+        public class TelegramMessage
+        {
+            public TelegramChat Chat { get; set; }
+            public string Text { get; set; }
+        }
+
+        public class TelegramChat
+        {
+            public long Id { get; set; }
+        }
     }
 }
