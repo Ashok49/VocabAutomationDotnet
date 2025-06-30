@@ -39,14 +39,13 @@ namespace VocabAutomation.Services
                 using var cmd = conn.CreateCommand();
 
                 cmd.CommandText = $@"
-                    CREATE TABLE IF NOT EXISTS \""{tableName}\ ""(
+                    CREATE TABLE IF NOT EXISTS ""{tableName}"" (
                         id SERIAL PRIMARY KEY,
                         word TEXT UNIQUE NOT NULL,
                         meaning TEXT,
                         created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         sent_date TIMESTAMP
-                    );
-                    ";
+                    );";
                 await cmd.ExecuteNonQueryAsync();
 
                 foreach (var (word, meaning) in entries)
